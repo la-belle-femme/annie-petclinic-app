@@ -1,0 +1,100 @@
+version: "3" 
+services: 
+  mysql: 
+    image: mysql:8 
+    volumes: 
+      - ./mysql_config:/etc/mysql/conf.d 
+      - mysql-data:/var/lib/mysql
+    environment: 
+      - MYSQL_ROOT_PASSWORD=
+      - MYSQL_ALLOW_EMPTY_PASSWORD=true
+      - MYSQL_USER=petclinic
+      - MYSQL_PASSWORD=petclinic
+      - MYSQL_DATABASE=petclinic 
+    networks: 
+      - petclinic_net 
+  redis-0: 
+    image: redis:4.0.2
+    volumes: 
+     - ./redis-0:/etc/redis/redis.conf
+     - redis20:/data
+    networks:
+      - petclinic_net 
+    depends_on: 
+      - redis-1
+      - redis-2
+      - sentinel-01 
+      - sentinel-02 
+      - sentinel-03 
+    restart: always
+  redis-1: 
+    image: redis:4.0.2
+    volumes: 
+      - ./redis-1:/etc/redis/redis.conf
+      - redis21:/data
+    networks:
+      - petclinic_net 
+    command: redis-server /etc/redis/redis.conf 
+    restart: always 
+  redis-2: 
+    image: redis:4.0.2
+    volumes: 
+      - ./redis-2:/etc/redis/redis.conf
+      - redis22:/data
+    networks:
+      - petclinic_net 
+    command: redis-server /etc/redis/redis.conf 
+    restart: always
+  sentinel-01: 
+    image: redis:4.0.2
+    volumes: 
+      - ./sentinel-01:/etc/redis/sentinel.conf
+      - sentinel11:/data
+    networks:
+      - petclinic_net 
+    command: redis-sentinel /etc/redis/sentinel.conf 
+  sentinel-02: 
+    image: redis:4.0.2
+    volumes: 
+      - ./sentinel-02:/etc/redis/sentinel.conf
+      - sentinel12:/data
+    networks:
+      - petclinic_net 
+    command: redis-sentinel /etc/redis/sentinel.conf 
+  sentinel-03: 
+    image: redis:4.0.2
+    volumes: 
+      - ./sentinel-03:/etc/redis/sentinel.conf
+      - sentinel13:/data
+    networks:
+      - petclinic_net 
+    command: redis-sentinel /etc/redis/sentinel.conf 
+  petclinic: 
+    build: 
+     context: ./Dockerfile.multi 
+    environment: 
+      - SERVER_PORT=8080
+      - MYSQL_URL=jdbc:mysql://mysqlserver/petclinic 
+    volumes: 
+      - pet2:/app 
+    ports:
+      - 500:8080 
+      - 300:8000  
+    networks: 
+      - petclinic_net 
+    depends_on: 
+      - redis-0 
+      - mysql
+    
+volumes:  
+  mysql-data:  
+  redis20: 
+  redis21: 
+  redis22: 
+  sentinel11: 
+  sentinel12: 
+  sentinel13: 
+  pet2: 
+networks: 
+  petclinic_net: 
+    driver: bridge
