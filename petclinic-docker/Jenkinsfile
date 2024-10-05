@@ -1,0 +1,94 @@
+pipeline {
+    agent any
+
+    environment {
+        // Define environment variables (replace with your actual values)
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub_cred') // Jenkins credentials ID for DockerHub
+        DOCKERHUB_USERNAME = 'bettysami'
+        SONARQUBE_SERVER = 'sonar' // SonarQube server name from Jenkins configuration
+        TRIVY_VERSION = '0.34.0' // Specify Trivy version or install in the environment if needed
+    }
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                // Step to clone the repository
+                git branch: 'main', url: 'https://github.com/la-belle-femme/annie-petclinic-app.git'
+            }
+        }
+
+        stage('Build Docker Image for SonarQube Scanner') {
+            steps {
+                script {
+                    // Build Docker image for SonarQube scanner
+                    dir ("${WORKSPACE}/sonarqube") {
+                        sh "docker build -t ${DOCKERHUB_USERNAME}/sonar:${BUILD_NUMBER} ."
+                    }
+                }
+            }
+        }
+
+        stage('SonarQube Scan') {
+            steps {
+                script {
+                    withSonarQubeEnv('sonar') { // Use the environment for SonarQube
+                        docker.image("${DOCKERHUB_USERNAME}/sonar:${BUILD_NUMBER}").inside {
+                            sh '''
+                                sonar-scanner \
+                                -Dsonar.projectKey=annie-petclinic \
+                                -Dsonar.sources=./petclinic-docker \
+                                -Dsonar.java.binaries=target/classes
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build Docker Image for Application') {
+            steps {
+                script {
+                    // Build the application Docker image
+                    sh "docker build -t ${DOCKERHUB_USERNAME}/petclinic_ui:${BUILD_NUMBER} -f Dockerfile.multi ."
+                }
+            }
+        }
+
+    //     stage('Trivy Security Scan') {
+    //         steps {
+    //             // Install Trivy if not installed or if you want to use a specific version
+    //             sh '''
+    //             curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v${TRIVY_VERSION}
+    //             trivy --version
+    //             '''
+    //             script {
+    //                 // Run Trivy scan on the newly built Docker image
+    //                 sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${DOCKERHUB_USERNAME}/petclinic_ui:${BUILD_NUMBER}"
+    //             }
+    //         }
+    //     }
+
+    //     stage('Push Docker Image to DockerHub') {
+    //         steps {
+    //             script {
+    //                 // Login to DockerHub and push the image
+    //                 sh '''
+    //                 echo "${DOCKERHUB_CREDENTIALS_PSW}" | docker login -u "${DOCKERHUB_CREDENTIALS_USR}" --password-stdin
+    //                 docker push ${DOCKERHUB_USERNAME}/petclinic_ui:${BUILD_NUMBER}
+    //                 '''
+    //             }
+    //         }
+    //     }
+    // }
+
+    post {
+        always {
+            // Clean up Docker images after pipeline execution to save disk space
+            sh "docker rmi ${DOCKERHUB_USERNAME}/petclinic_ui:${BUILD_NUMBER} || true"
+        }
+        failure {
+            // Notify in case of failure
+            echo "Pipeline failed"
+        }
+    }
+}
