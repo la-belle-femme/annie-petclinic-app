@@ -52,10 +52,34 @@ pipeline {
             steps {
                 script {
                     dir("${WORKSPACE}/petclinic-docker") {
+                        sh "docker build -t ${DOCKERHUB_USERNAME}/petclinic_ui:${BUILD_NUMBER} -f Dockerfile.multi ."
+                    }
+                }
+            }
+        }
+        stage('Trivy Scan') {
+            steps {
+                script {
+                    def trivyStatus = sh(script: """
+                        wget https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz
+                        tar zxvf trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz
+                        ./trivy image --exit-code 0 --severity HIGH,CRITICAL ${DOCKERHUB_USERNAME}/petclinic_ui:${BUILD_NUMBER}
+                    """, returnStatus: true)
+
+                    if (trivyStatus != 0) {
+                        echo "Vulnerabilities found. Check the Trivy scan results."
+                    }
+                }
+            }
+        }
+        stage('Push to DockerHub') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub_cred', passwordVariable: 'DOCKERHUB_PASSWORD', usernameVariable: 'DOCKERHUB_USERNAME')]) {
                         sh """
-                            docker build --target production \
-                            -t ${DOCKERHUB_USERNAME}/petclinic_ui:${BUILD_NUMBER} \
-                            -f Dockerfile.multi .
+                            echo ${DOCKERHUB_PASSWORD} | docker login -u ${DOCKERHUB_USERNAME} --password-stdin
+                            docker push ${DOCKERHUB_USERNAME}/petclinic_ui:${BUILD_NUMBER}
+                            docker logout
                         """
                     }
                 }
@@ -66,9 +90,13 @@ pipeline {
         always {
             sh "docker rmi ${DOCKERHUB_USERNAME}/petclinic_ui:${BUILD_NUMBER} || true"
             sh "docker rmi ${DOCKERHUB_USERNAME}/sonar:${BUILD_NUMBER} || true"
+            sh "rm -f trivy*"
         }
         failure {
             echo "Pipeline failed"
+        }
+        success {
+            echo "Pipeline succeeded"
         }
     }
 }
