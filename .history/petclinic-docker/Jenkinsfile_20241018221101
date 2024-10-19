@@ -8,10 +8,7 @@ pipeline {
         SONAR_TOKEN = credentials('sonar')    
     }
     parameters {
-        booleanParam(name: "skip_stage", defaultValue: false, description: "skip stage")
-        string(name: 'username', defaultValue: "", description: "Enter your username")
-        string(name: 'password', defaultValue: "", description: "Enter your password")
-        string(name: 'serverDNS', defaultValue: "54.242.14.138", description: "Enter your serverDNS")
+        booleanParam(name:"skip_stage",defaultValue:False,description:"skip stage")
     }
     stages {
         stage('Clone Repository') {
@@ -84,11 +81,6 @@ pipeline {
             }
         }
         stage('Trivy Scan') {
-            when {
-                expression {
-                    !params.skip_stage
-                }
-            }
             steps {
                 script {
                     def trivyStatus = sh(script: """
@@ -104,11 +96,6 @@ pipeline {
             }
         }
         stage('Push to DockerHub') {
-            when {
-                expression {
-                    !params.skip_stage
-                }
-            }
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'dockerhub_cred', passwordVariable: 'DOCKERHUB_PASSWORD', usernameVariable: 'DOCKERHUB_USERNAME')]) {
@@ -118,20 +105,6 @@ pipeline {
                             docker logout
                         """
                     }
-                }
-            }
-        }
-        stage('Copy file to root server') {
-            steps {
-                script {
-                    sh "sshpass -p '${params.password}' scp -o StrictHostKeyChecking=no -r . ${params.username}@${params.serverDNS}:~/"
-                }
-            }
-        }
-        stage('Deploy on remote server') {
-            steps {
-                script {
-                    sh "sshpass -p '${params.password}' ssh -o StrictHostKeyChecking=no ${params.username}@${params.serverDNS} 'sudo docker-compose up -d'"
                 }
             }
         }

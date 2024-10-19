@@ -8,10 +8,7 @@ pipeline {
         SONAR_TOKEN = credentials('sonar')    
     }
     parameters {
-        booleanParam(name: "skip_stage", defaultValue: false, description: "skip stage")
-        string(name: 'username', defaultValue: "", description: "Enter your username")
-        string(name: 'password', defaultValue: "", description: "Enter your password")
-        string(name: 'serverDNS', defaultValue: "54.242.14.138", description: "Enter your serverDNS")
+        booleanParam(name:"skip_stage",defaultValue:False,description:"skip stage")
     }
     stages {
         stage('Clone Repository') {
@@ -104,7 +101,7 @@ pipeline {
             }
         }
         stage('Push to DockerHub') {
-            when {
+                        when {
                 expression {
                     !params.skip_stage
                 }
@@ -121,21 +118,23 @@ pipeline {
                 }
             }
         }
-        stage('Copy file to root server') {
-            steps {
-                script {
-                    sh "sshpass -p '${params.password}' scp -o StrictHostKeyChecking=no -r . ${params.username}@${params.serverDNS}:~/"
-                }
-            }
-        }
+    } 
+
         stage('Deploy on remote server') {
             steps {
                 script {
-                    sh "sshpass -p '${params.password}' ssh -o StrictHostKeyChecking=no ${params.username}@${params.serverDNS} 'sudo docker-compose up -d'"
+                    
+                }
+            }
+        } 
+ 
+        stage('Deploy on remote server') {
+            steps {
+                script {
+
                 }
             }
         }
-    }
     post {
         always {
             sh "docker rmi ${DOCKERHUB_USERNAME}/petclinic_ui:${BUILD_NUMBER} || true"
