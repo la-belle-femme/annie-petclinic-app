@@ -1,4 +1,4 @@
-version: "3" 
+version: "3"
 services: 
   mysql: 
     image: mysql:8 
@@ -13,6 +13,7 @@ services:
       - MYSQL_DATABASE=petclinic 
     networks: 
       - petclinic_net 
+
   redis-0: 
     image: redis:4.0.2
     volumes: 
@@ -27,6 +28,7 @@ services:
       - sentinel-02 
       - sentinel-03 
     restart: always
+
   redis-1: 
     image: redis:4.0.2
     volumes: 
@@ -36,6 +38,7 @@ services:
       - petclinic_net 
     command: redis-server /etc/redis/redis.conf 
     restart: always 
+
   redis-2: 
     image: redis:4.0.2
     volumes: 
@@ -45,6 +48,7 @@ services:
       - petclinic_net 
     command: redis-server /etc/redis/redis.conf 
     restart: always
+
   sentinel-01: 
     image: redis:4.0.2
     volumes: 
@@ -53,6 +57,7 @@ services:
     networks:
       - petclinic_net 
     command: redis-sentinel /etc/redis/sentinel.conf 
+
   sentinel-02: 
     image: redis:4.0.2
     volumes: 
@@ -61,6 +66,7 @@ services:
     networks:
       - petclinic_net 
     command: redis-sentinel /etc/redis/sentinel.conf 
+
   sentinel-03: 
     image: redis:4.0.2
     volumes: 
@@ -69,17 +75,17 @@ services:
     networks:
       - petclinic_net 
     command: redis-sentinel /etc/redis/sentinel.conf 
+
   petclinic: 
-    build: 
-     context: ./Dockerfile.multi 
+    image: bettysami/petclinic_ui:19
     environment: 
       - SERVER_PORT=8080
       - MYSQL_URL=jdbc:mysql://mysqlserver/petclinic 
     volumes: 
       - pet2:/app 
     ports:
-      - 500:8080 
-      - 300:8000  
+      - "500:8080" 
+      - "300:8000"  
     networks: 
       - petclinic_net 
     depends_on: 
@@ -95,6 +101,7 @@ volumes:
   sentinel12: 
   sentinel13: 
   pet2: 
+
 networks: 
   petclinic_net: 
     driver: bridge
